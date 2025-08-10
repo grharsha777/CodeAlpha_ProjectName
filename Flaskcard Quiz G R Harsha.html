@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Flashcard Quiz & Random Quote</title>
+<style>
+  :root{
+    --bg:#0f1724; --card:#0b1220; --muted:#9aa6b2; --accent:#7dd3fc; --glass: rgba(255,255,255,0.04);
+    --success:#10b981; --danger:#ef4444;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:linear-gradient(180deg,#071022 0%, #061827 100%);
+    color:#e6eef6;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:28px;
+  }
+
+  .app {
+    width:100%;
+    max-width:960px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border-radius:14px;
+    box-shadow: 0 8px 30px rgba(2,6,23,0.7);
+    overflow:hidden;
+    display:grid;
+    grid-template-columns: 1fr 380px;
+    gap:20px;
+    padding:20px;
+  }
+
+  /* Left: Flashcards area */
+  .left {
+    padding:16px;
+  }
+  header.app-header {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:12px;
+  }
+  header h1{font-size:18px;margin:0}
+  .tabs {display:flex; gap:8px;}
+  .tab {
+    background:var(--glass);
+    padding:8px 12px;
+    border-radius:10px;
+    cursor:pointer;
+    color:var(--muted);
+    font-size:13px;
+  }
+  .tab.active{ background:linear-gradient(90deg,#042434,#063f44); color:var(--accent); box-shadow: 0 4px 14px rgba(0,0,0,0.6); }
+
+  .card-wrap {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:12px;
+    margin-top:8px;
+  }
+
+  .flashcard {
+    width:100%;
+    max-width:680px;
+    min-height:180px;
+    border-radius:12px;
+    padding:20px;
+    background:linear-gradient(180deg,#071826,#0a2230);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.02), 0 10px 30px rgba(2,6,23,0.6);
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    text-align:center;
+    position:relative;
+    transition: transform .28s ease, box-shadow .28s;
+    user-select:none;
+  }
+  .flashcard:hover{ transform: translateY(-6px) }
+
+  .card-question { font-size:20px; font-weight:600; color:#eaf6ff; margin-bottom:8px; }
+  .card-answer { font-size:16px; color:var(--muted); margin-top:6px; display:none; }
+  .card-answer.visible{ display:block; color:#cfeefe; }
+
+  .controls { display:flex; gap:8px; margin-top:12px; }
+  button.btn {
+    background:transparent; border:1px solid rgba(255,255,255,0.06);
+    padding:8px 12px; border-radius:8px; color:var(--accent);
+    cursor:pointer; font-weight:600;
+  }
+  button.btn.primary {
+    background:linear-gradient(90deg,#036b7a,#00a2c6);
+    color:#00171a; border: none;
+  }
+  button.btn.warn { background:linear-gradient(90deg,#f97316,#f43f5e); color:white; border:none; }
+  button.icon {
+    padding:8px; min-width:44px;
+  }
+
+  .small { font-size:13px; color:var(--muted); margin-top:12px; }
+
+  /* Right column: quote + management */
+  .right {
+    padding:16px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.01));
+    border-radius:10px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+
+  .quote-box {
+    padding:16px;
+    border-radius:10px;
+    background: linear-gradient(180deg,#021a22,#031b24);
+    min-height:120px; display:flex; flex-direction:column; justify-content:center;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+  }
+  .quote-text { font-size:15px; color:#dff6ff; margin-bottom:8px; }
+  .quote-author { font-size:13px; color:var(--muted); text-align:right; }
+
+  .list {
+    margin-top:8px;
+    display:flex; flex-direction:column; gap:8px;
+    max-height:260px; overflow:auto; padding-right:6px;
+  }
+  .list-item {
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:rgba(255,255,255,0.02); padding:8px 10px; border-radius:8px; font-size:14px;
+  }
+  .list-item .meta { color:var(--muted); font-size:13px; flex:1; margin-right:8px; }
+
+  .form {
+    display:flex; flex-direction:column; gap:8px; margin-top:10px;
+  }
+  input[type="text"], textarea {
+    width:100%; padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.04);
+    background:transparent; color:inherit; font-size:14px;
+  }
+  textarea { resize:vertical; min-height:70px; }
+
+  .row { display:flex; gap:8px; align-items:center; }
+  .muted { color:var(--muted); }
+
+  footer.smallprint { text-align:center; color:var(--muted); margin-top:10px; font-size:12px; }
+
+  /* responsive */
+  @media (max-width:940px){
+    .app { 
+      grid-template-columns: 1fr; 
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .right { order:2 }
+  }
+</style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="Flashcards and Quotes app">
+    <div class="left" id="left">
+      <header class="app-header">
+        <h1>Flashcard Quiz — APOP (apoptosis)</h1>
+        <div class="tabs">
+          <div class="tab active" id="tab-cards">Cards</div>
+          <div class="tab" id="tab-quick">Quick Add</div>
+        </div>
+      </header>
+
+      <section class="card-wrap" id="card-wrap">
+        <div class="flashcard" id="flashcard" tabindex="0" role="region" aria-live="polite">
+          <div class="card-question" id="card-question">Loading...</div>
+          <div class="card-answer" id="card-answer"></div>
+        </div>
+
+        <div class="controls" aria-hidden="false">
+          <button class="btn icon" id="prevBtn" title="Previous (←)">◀</button>
+          <button class="btn primary" id="toggleBtn">Show Answer</button>
+          <button class="btn icon" id="nextBtn" title="Next (→)">▶</button>
+          <button class="btn" id="shuffleBtn" title="Shuffle deck">Shuffle</button>
+          <button class="btn warn" id="addBtn">Add Card</button>
+        </div>
+
+        <div class="small muted">Use ← / → to navigate, space to show/hide answer.</div>
+
+        <!-- quick add container -->
+        <div id="quick-area" style="width:100%; max-width:680px; display:none;">
+          <form id="quickForm" class="form" onsubmit="return false;">
+            <input id="quickQ" type="text" placeholder="Question (front)" required />
+            <textarea id="quickA" placeholder="Answer (back)"></textarea>
+            <div style="display:flex; gap:8px;">
+              <button class="btn primary" id="quickSave">Save</button>
+              <button class="btn" id="quickCancel">Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <div style="width:100%; max-width:680px;">
+          <div style="margin-top:12px;">
+            <h3 style="margin:0 0 8px 0; font-size:15px">Your Deck</h3>
+            <div id="deckList" class="list" aria-label="Deck list"></div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="smallprint">Flashcards saved locally in your browser (localStorage).</footer>
+    </div>
+
+    <aside class="right" id="right">
+      <div>
+        <h3 style="margin:0 0 6px 0">Random Quote Generator</h3>
+        <div class="quote-box" id="quoteBox" aria-live="polite">
+          <div class="quote-text" id="quoteText">Loading quote…</div>
+          <div class="quote-author" id="quoteAuthor"></div>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button class="btn primary" id="newQuoteBtn">New Quote</button>
+          <button class="btn" id="copyQuoteBtn">Copy</button>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid rgba(255,255,255,0.02); padding-top:12px;">
+        <h4 style="margin:0 0 8px 0">Add / Edit Card</h4>
+        <form id="cardForm" class="form" onsubmit="return false;">
+          <input id="qInput" type="text" placeholder="Question (front)" required />
+          <textarea id="aInput" placeholder="Answer (back)"></textarea>
+          <div class="row">
+            <button class="btn primary" id="saveCardBtn">Save Card</button>
+            <button class="btn" id="clearDeckBtn">Clear Deck</button>
+            <div style="flex:1;"></div>
+            <div class="muted" id="editingInfo"></div>
+          </div>
+        </form>
+      </div>
+
+      <div style="border-top:1px solid rgba(255,255,255,0.02); padding-top:12px;">
+        <h4 style="margin:0 0 8px 0">Built-in facts</h4>
+        <div class="muted" style="font-size:13px">
+          This sample deck contains basic APOP (apoptosis) flashcards. Edit or add your own.
+        </div>
+      </div>
+    </aside>
+  </div>
+
+<script>
+/* ========= Data & Persistence ========= */
+const STORAGE_KEY = 'apop_flashcards_v1';
+
+const sampleCards = [
+  {q: "What is apoptosis?", a: "Programmed cell death—an orderly process that allows cells to die without causing inflammation."},
+  {q: "Name two morphological features of apoptosis.", a: "Cell shrinkage and chromatin condensation (nuclear fragmentation)."},
+  {q: "Which family of proteins are central regulators of apoptosis?", a: "Caspases (protease enzymes) and the Bcl-2 family regulate mitochondrial pathway."},
+  {q: "Difference between apoptosis and necrosis?", a: "Apoptosis is regulated and non-inflammatory; necrosis is uncontrolled and often triggers inflammation."},
+  {q: "What role does mitochondria play in intrinsic apoptosis?", a: "Release of cytochrome c activates caspase cascade leading to cell death."}
+];
+
+let deck = loadDeck();
+if(deck.length === 0){
+  deck = sampleCards.slice(); saveDeck();
+}
+
+function loadDeck(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return [];
+    return JSON.parse(raw);
+  } catch(e){ console.error(e); return []; }
+}
+function saveDeck(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(deck));
+}
+
+/* ========= UI references ========= */
+const cardQuestion = document.getElementById('card-question');
+const cardAnswer = document.getElementById('card-answer');
+const flashcard = document.getElementById('flashcard');
+const toggleBtn = document.getElementById('toggleBtn');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const shuffleBtn = document.getElementById('shuffleBtn');
+const addBtn = document.getElementById('addBtn');
+const deckList = document.getElementById('deckList');
+
+const tabCards = document.getElementById('tab-cards');
+const tabQuick = document.getElementById('tab-quick');
+const quickArea = document.getElementById('quick-area');
+const quickForm = document.getElementById('quickForm');
+const quickQ = document.getElementById('quickQ');
+const quickA = document.getElementById('quickA');
+const quickSave = document.getElementById('quickSave');
+const quickCancel = document.getElementById('quickCancel');
+
+const cardForm = document.getElementById('cardForm');
+const qInput = document.getElementById('qInput');
+const aInput = document.getElementById('aInput');
+const saveCardBtn = document.getElementById('saveCardBtn');
+const clearDeckBtn = document.getElementById('clearDeckBtn');
+const editingInfo = document.getElementById('editingInfo');
+
+let currentIndex = 0;
+let showingAnswer = false;
+let editingIndex = null;
+
+/* ========= Render / Actions ========= */
+function renderCard(){
+  if(deck.length === 0){
+    cardQuestion.textContent = "No cards — add one!";
+    cardAnswer.textContent = "";
+    cardAnswer.classList.remove('visible');
+    toggleBtn.disabled = true;
+    return;
+  }
+  toggleBtn.disabled = false;
+  const c = deck[currentIndex];
+  cardQuestion.textContent = c.q;
+  cardAnswer.textContent = c.a;
+  if(showingAnswer) cardAnswer.classList.add('visible');
+  else cardAnswer.classList.remove('visible');
+  updateDeckList();
+  updateEditingInfo();
+}
+function updateDeckList(){
+  deckList.innerHTML = '';
+  deck.forEach((c, idx) => {
+    const li = document.createElement('div');
+    li.className = 'list-item';
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.innerHTML = `<strong>${escapeHtml(c.q)}</strong><div class="muted" style="font-size:12px;">${truncate(c.a, 120)}</div>`;
+    const actions = document.createElement('div');
+    actions.style.display='flex'; actions.style.gap='6px';
+    const edit = document.createElement('button'); edit.className='btn'; edit.textContent='Edit';
+    const del = document.createElement('button'); del.className='btn'; del.textContent='Delete';
+    edit.onclick = () => startEdit(idx);
+    del.onclick = () => { if(confirm('Delete this card?')) { deleteCard(idx); } };
+    actions.appendChild(edit); actions.appendChild(del);
+    li.appendChild(meta); li.appendChild(actions);
+    deckList.appendChild(li);
+  });
+}
+
+function showNext(){
+  if(deck.length === 0) return;
+  currentIndex = (currentIndex + 1) % deck.length;
+  showingAnswer = false;
+  renderCard();
+}
+function showPrev(){
+  if(deck.length === 0) return;
+  currentIndex = (currentIndex - 1 + deck.length) % deck.length;
+  showingAnswer = false;
+  renderCard();
+}
+function toggleAnswer(){
+  showingAnswer = !showingAnswer;
+  toggleBtn.textContent = showingAnswer ? 'Hide Answer' : 'Show Answer';
+  renderCard();
+}
+
+function shuffleDeck(){
+  for(let i = deck.length-1; i>0; i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  currentIndex = 0; showingAnswer = false;
+  saveDeck(); renderCard();
+}
+
+function addCard(q,a){
+  deck.push({q:q||'Untitled', a:a||''});
+  saveDeck(); currentIndex = deck.length-1; showingAnswer=false; renderCard();
+}
+
+function deleteCard(idx){
+  if(idx < 0 || idx >= deck.length) return;
+  deck.splice(idx,1);
+  if(currentIndex >= deck.length) currentIndex = Math.max(0, deck.length-1);
+  saveDeck(); renderCard();
+}
+
+function startEdit(idx){
+  const card = deck[idx];
+  editingIndex = idx;
+  qInput.value = card.q;
+  aInput.value = card.a;
+  editingInfo.textContent = `Editing #${idx+1}`;
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function saveEdit(){
+  const q = qInput.value.trim();
+  const a = aInput.value.trim();
+  if(!q) { alert('Question required'); return; }
+  if(editingIndex === null){
+    // new card
+    addCard(q,a);
+  } else {
+    deck[editingIndex] = {q,a};
+    currentIndex = editingIndex;
+    editingIndex = null;
+  }
+  qInput.value = ''; aInput.value = '';
+  saveDeck();
+  renderCard();
+}
+
+function updateEditingInfo(){
+  if(editingIndex === null) editingInfo.textContent = '';
+  else editingInfo.textContent = `Editing card #${editingIndex+1}`;
+}
+
+function clearDeck(){
+  if(!confirm('Clear entire deck? This cannot be undone.')) return;
+  deck = []; saveDeck(); currentIndex = 0; showingAnswer = false; renderCard();
+}
+
+/* ========= Quick add UI ========= */
+tabCards.onclick = () => { tabCards.classList.add('active'); tabQuick.classList.remove('active'); quickArea.style.display='none'; };
+tabQuick.onclick = () => { tabQuick.classList.add('active'); tabCards.classList.remove('active'); quickArea.style.display='block'; quickQ.focus(); };
+
+quickSave.onclick = () => {
+  const q = quickQ.value.trim(), a = quickA.value.trim();
+  if(!q) { quickQ.focus(); return; }
+  addCard(q,a);
+  quickQ.value=''; quickA.value=''; quickArea.style.display='none';
+  tabCards.classList.add('active'); tabQuick.classList.remove('active');
+};
+quickCancel.onclick = () => { quickQ.value=''; quickA.value=''; quickArea.style.display='none'; tabCards.classList.add('active'); tabQuick.classList.remove('active'); };
+
+/* ========= Form handlers ========= */
+saveCardBtn.onclick = () => saveEdit();
+clearDeckBtn.onclick = () => clearDeck();
+addBtn.onclick = () => {
+  editingIndex = null;
+  qInput.value = '';
+  aInput.value = '';
+  editingInfo.textContent = 'Creating new card';
+  qInput.focus();
+};
+
+/* keyboard */
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'ArrowRight') showNext();
+  else if(e.key === 'ArrowLeft') showPrev();
+  else if(e.key === ' '){
+    // only if focused on card area or body
+    const active = document.activeElement;
+    if(active === document.body || active === flashcard || active.tagName === 'DIV') {
+      e.preventDefault();
+      toggleAnswer();
+    }
+  }
+});
+
+/* wire up nav buttons */
+prevBtn.onclick = showPrev;
+nextBtn.onclick = showNext;
+toggleBtn.onclick = toggleAnswer;
+shuffleBtn.onclick = shuffleDeck;
+
+/* initial render */
+renderCard();
+
+/* ========= Utilities ========= */
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function truncate(s, n){ if(!s) return ''; return s.length>n ? s.slice(0,n-1) + '…' : s; }
+
+/* ========= Quotes area ========= */
+const quotes = [
+  {t:"Apoptosis is the body's way of pruning — it's essential for growth and health.", a:"Cell Biology Textbook"},
+  {t:"The mitochondrion can be both a factory and an executioner in the cell.", a:"Physiology Notes"},
+  {t:"Understanding apoptosis helps explain development and many diseases.", a:"Course Summary"},
+  {t:"Death is part of life — cells follow the same rule.", a:"Instructor"}
+];
+
+const quoteText = document.getElementById('quoteText');
+const quoteAuthor = document.getElementById('quoteAuthor');
+const newQuoteBtn = document.getElementById('newQuoteBtn');
+const copyQuoteBtn = document.getElementById('copyQuoteBtn');
+
+function showRandomQuote(){
+  const pool = quotes;
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  quoteText.textContent = '“' + pick.t + '”';
+  quoteAuthor.textContent = pick.a ? '— ' + pick.a : '';
+}
+newQuoteBtn.onclick = showRandomQuote;
+copyQuoteBtn.onclick = () => {
+  const text = quoteText.textContent + (quoteAuthor.textContent ? ' ' + quoteAuthor.textContent : '');
+  navigator.clipboard?.writeText(text).then(()=>{ alert('Copied quote'); }).catch(()=>{ alert('Copy failed'); });
+};
+
+showRandomQuote();
+
+/* ========= Edit / Delete handlers from list (additional) ========= */
+/* implemented above using startEdit/deleteCard */
+
+/* ========= Small polish: save when leaving inputs ========= */
+window.addEventListener('beforeunload', () => saveDeck());
+
+</script>
+</body>
+</html>
